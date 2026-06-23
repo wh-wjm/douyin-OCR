@@ -1,0 +1,24 @@
+{
+  "name": "douyin-ocr",
+  "version": "2.0.0",
+  "private": true,
+  "packageManager": "bun@1.2.20",
+  "type": "module",
+  "scripts": {
+    "dev": "vite app --host 127.0.0.1 --port 1420",
+    "build": "tsc --noEmit && vite build app",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-opener": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.0.0"
+  }
+}

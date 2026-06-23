@@ -1,6 +1,6 @@
 [package]
 name = "whwjm-ocr"
-version = "0.1.1"
+version = "2.0.0"
 edition = "2024"
 description = "抖音登记OCR"
 
@@ -9,11 +9,20 @@ name = "抖音登记OCR"
 identifier = "douyinocr.trih.topgamers.cn"
 icon = ["ocr-logo.png"]
 
+[features]
+default = []
+slint-gui = ["dep:rfd", "dep:slint", "dep:webbrowser"]
+
+[[bin]]
+name = "export_gui"
+path = "src/bin/export_gui.rs"
+required-features = ["slint-gui"]
+
 [dependencies]
 anyhow = "1"
 image = "0.25"
 ocr-rs = "2.3.x"
-rfd = "0.17.2"
-slint = "1.16.1"
+rfd = { version = "0.17.2", optional = true }
+slint = { version = "1.16.1", optional = true }
 ureq = "3.3"
-webbrowser = "1.2"
+webbrowser = { version = "1.2", optional = true }

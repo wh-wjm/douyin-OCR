@@ -17,102 +17,59 @@ jobs:
           - name: macos-arm64
             os: macos-14
             target: aarch64-apple-darwin
-            binary: export_gui
-            app_name: 抖音登记OCR
-            archive: whwjm-ocr-macos-arm64-unsigned.zip
+            bundles: app
+            artifact: douyin-ocr-macos-arm64-app-unsigned.zip
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            binary: export_gui.exe
-            app_name: 抖音登记OCR
-            archive: whwjm-ocr-windows-x64-unsigned.zip
+            bundles: nsis
+            artifact: douyin-ocr-windows-x64-setup-unsigned.exe
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.20
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform.target }}
 
-      - name: Build
-        run: cargo build --release --bin export_gui --target ${{ matrix.platform.target }}
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Package
+      - name: Build Tauri app
+        run: bun run tauri build --target ${{ matrix.platform.target }} --bundles ${{ matrix.platform.bundles }}
+
+      - name: Package artifact
         shell: bash
         run: |
           mkdir -p dist
           if [[ "${{ runner.os }}" == "macOS" ]]; then
-            app_dir="dist/${{ matrix.platform.app_name }}.app"
-            mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
-            cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }}" "$app_dir/Contents/MacOS/${{ matrix.platform.app_name }}"
-            chmod +x "$app_dir/Contents/MacOS/${{ matrix.platform.app_name }}"
-
-            iconset="$RUNNER_TEMP/AppIcon.iconset"
-            mkdir -p "$iconset"
-            sips -z 16 16 ocr-logo.png --out "$iconset/icon_16x16.png"
-            sips -z 32 32 ocr-logo.png --out "$iconset/icon_16x16@2x.png"
-            sips -z 32 32 ocr-logo.png --out "$iconset/icon_32x32.png"
-            sips -z 64 64 ocr-logo.png --out "$iconset/icon_32x32@2x.png"
-            sips -z 128 128 ocr-logo.png --out "$iconset/icon_128x128.png"
-            sips -z 256 256 ocr-logo.png --out "$iconset/icon_128x128@2x.png"
-            sips -z 256 256 ocr-logo.png --out "$iconset/icon_256x256.png"
-            sips -z 512 512 ocr-logo.png --out "$iconset/icon_256x256@2x.png"
-            sips -z 512 512 ocr-logo.png --out "$iconset/icon_512x512.png"
-            sips -z 1024 1024 ocr-logo.png --out "$iconset/icon_512x512@2x.png"
-            iconutil -c icns "$iconset" -o "$app_dir/Contents/Resources/AppIcon.icns"
-
-            version="${GITHUB_REF_NAME#v}"
-            cat > "$app_dir/Contents/Info.plist" <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>CFBundleDevelopmentRegion</key>
-            <string>zh_CN</string>
-            <key>CFBundleDisplayName</key>
-            <string>${{ matrix.platform.app_name }}</string>
-            <key>CFBundleExecutable</key>
-            <string>${{ matrix.platform.app_name }}</string>
-            <key>CFBundleIconFile</key>
-            <string>AppIcon</string>
-            <key>CFBundleIdentifier</key>
-            <string>douyinocr.trih.topgamers.cn</string>
-            <key>CFBundleInfoDictionaryVersion</key>
-            <string>6.0</string>
-            <key>CFBundleName</key>
-            <string>${{ matrix.platform.app_name }}</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>CFBundleShortVersionString</key>
-            <string>$version</string>
-            <key>CFBundleVersion</key>
-            <string>$version</string>
-            <key>LSMinimumSystemVersion</key>
-            <string>11.0</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-          </dict>
-          </plist>
-          PLIST
-
-            ditto -c -k --sequesterRsrc --keepParent "$app_dir" "${{ matrix.platform.archive }}"
-          else
-            cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }}" "dist/${{ matrix.platform.app_name }}.exe"
-            cd dist
-            if command -v 7z >/dev/null 2>&1; then
-              7z a "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_name }}.exe"
-            else
-              zip -j "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_name }}.exe"
+            app_path="$(find "src-tauri/target/${{ matrix.platform.target }}/release/bundle/macos" -maxdepth 1 -name "*.app" -type d -print -quit)"
+            if [[ -z "$app_path" ]]; then
+              echo "macOS app bundle not found"
+              exit 1
             fi
+            ditto -c -k --sequesterRsrc --keepParent "$app_path" "dist/${{ matrix.platform.artifact }}"
+          else
+            installer_path="$(find "src-tauri/target/${{ matrix.platform.target }}/release/bundle/nsis" -maxdepth 1 -name "*.exe" -type f -print -quit)"
+            if [[ -z "$installer_path" ]]; then
+              echo "Windows NSIS installer not found"
+              exit 1
+            fi
+            cp "$installer_path" "dist/${{ matrix.platform.artifact }}"
           fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.name }}
-          path: ${{ matrix.platform.archive }}
+          path: dist/${{ matrix.platform.artifact }}
 
   publish:
     name: Publish GitHub Release
@@ -131,8 +88,10 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.zip
+          files: artifacts/**/*
           body: |
-            本版本包含未签名的桌面程序。
+            本版本是基于 Tauri v2 的 2.0 桌面程序，包含未签名的 macOS 和 Windows 安装包。
 
-            Windows 可能会显示 SmartScreen 提醒，macOS 可能需要在隐私与安全性中手动允许运行。
+            macOS 包内是 `抖音登记OCR.app`。由于未签名，首次打开可能需要在系统设置的“隐私与安全性”中手动允许运行。
+
+            Windows 包是未签名 NSIS 安装器，可能会显示 SmartScreen 提醒。

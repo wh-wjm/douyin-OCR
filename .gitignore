@@ -1,4 +1,8 @@
 /target
+node_modules/
+app/dist/
+src-tauri/gen/
+src-tauri/target/
 .DS_Store
 models/.DS_Store
 models/*.mnn
