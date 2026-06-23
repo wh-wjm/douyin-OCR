@@ -18,13 +18,13 @@ jobs:
             os: macos-14
             target: aarch64-apple-darwin
             binary: export_gui
-            app_binary: 抖音登记OCR
+            app_name: 抖音登记OCR
             archive: whwjm-ocr-macos-arm64-unsigned.zip
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             binary: export_gui.exe
-            app_binary: 抖音登记OCR.exe
+            app_name: 抖音登记OCR
             archive: whwjm-ocr-windows-x64-unsigned.zip
 
     steps:
@@ -43,12 +43,69 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }}" "dist/${{ matrix.platform.app_binary }}"
-          cd dist
-          if command -v 7z >/dev/null 2>&1; then
-            7z a "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_binary }}"
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            app_dir="dist/${{ matrix.platform.app_name }}.app"
+            mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+            cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }}" "$app_dir/Contents/MacOS/${{ matrix.platform.app_name }}"
+            chmod +x "$app_dir/Contents/MacOS/${{ matrix.platform.app_name }}"
+
+            iconset="$RUNNER_TEMP/AppIcon.iconset"
+            mkdir -p "$iconset"
+            sips -z 16 16 ocr-logo.png --out "$iconset/icon_16x16.png"
+            sips -z 32 32 ocr-logo.png --out "$iconset/icon_16x16@2x.png"
+            sips -z 32 32 ocr-logo.png --out "$iconset/icon_32x32.png"
+            sips -z 64 64 ocr-logo.png --out "$iconset/icon_32x32@2x.png"
+            sips -z 128 128 ocr-logo.png --out "$iconset/icon_128x128.png"
+            sips -z 256 256 ocr-logo.png --out "$iconset/icon_128x128@2x.png"
+            sips -z 256 256 ocr-logo.png --out "$iconset/icon_256x256.png"
+            sips -z 512 512 ocr-logo.png --out "$iconset/icon_256x256@2x.png"
+            sips -z 512 512 ocr-logo.png --out "$iconset/icon_512x512.png"
+            sips -z 1024 1024 ocr-logo.png --out "$iconset/icon_512x512@2x.png"
+            iconutil -c icns "$iconset" -o "$app_dir/Contents/Resources/AppIcon.icns"
+
+            version="${GITHUB_REF_NAME#v}"
+            cat > "$app_dir/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key>
+            <string>zh_CN</string>
+            <key>CFBundleDisplayName</key>
+            <string>${{ matrix.platform.app_name }}</string>
+            <key>CFBundleExecutable</key>
+            <string>${{ matrix.platform.app_name }}</string>
+            <key>CFBundleIconFile</key>
+            <string>AppIcon</string>
+            <key>CFBundleIdentifier</key>
+            <string>douyinocr.trih.topgamers.cn</string>
+            <key>CFBundleInfoDictionaryVersion</key>
+            <string>6.0</string>
+            <key>CFBundleName</key>
+            <string>${{ matrix.platform.app_name }}</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>CFBundleShortVersionString</key>
+            <string>$version</string>
+            <key>CFBundleVersion</key>
+            <string>$version</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>11.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+          </dict>
+          </plist>
+          PLIST
+
+            ditto -c -k --sequesterRsrc --keepParent "$app_dir" "${{ matrix.platform.archive }}"
           else
-            zip -j "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_binary }}"
+            cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }}" "dist/${{ matrix.platform.app_name }}.exe"
+            cd dist
+            if command -v 7z >/dev/null 2>&1; then
+              7z a "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_name }}.exe"
+            else
+              zip -j "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_name }}.exe"
+            fi
           fi
 
       - name: Upload artifact
