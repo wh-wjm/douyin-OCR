@@ -1,0 +1,19 @@
+[package]
+name = "whwjm-ocr"
+version = "0.1.0"
+edition = "2024"
+description = "抖音登记OCR"
+
+[package.metadata.bundle]
+name = "抖音登记OCR"
+identifier = "douyinocr.trih.topgamers.cn"
+icon = ["ocr-logo.png"]
+
+[dependencies]
+anyhow = "1"
+image = "0.25"
+ocr-rs = "2.3.x"
+rfd = "0.17.2"
+slint = "1.16.1"
+ureq = "3.3"
+webbrowser = "1.2"

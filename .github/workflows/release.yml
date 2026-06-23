@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform.name }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: macos-arm64
+            os: macos-14
+            target: aarch64-apple-darwin
+            binary: export_gui
+            app_binary: 抖音登记OCR
+            archive: whwjm-ocr-macos-arm64-unsigned.zip
+          - name: macos-x64
+            os: macos-13
+            target: x86_64-apple-darwin
+            binary: export_gui
+            app_binary: 抖音登记OCR
+            archive: whwjm-ocr-macos-x64-unsigned.zip
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: export_gui.exe
+            app_binary: 抖音登记OCR.exe
+            archive: whwjm-ocr-windows-x64-unsigned.zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+
+      - name: Build
+        run: cargo build --release --bin export_gui --target ${{ matrix.platform.target }}
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }}" "dist/${{ matrix.platform.app_binary }}"
+          cd dist
+          if command -v 7z >/dev/null 2>&1; then
+            7z a "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_binary }}"
+          else
+            zip -j "../${{ matrix.platform.archive }}" "${{ matrix.platform.app_binary }}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.name }}
+          path: ${{ matrix.platform.archive }}
+
+  publish:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          body: |
+            This release contains unsigned desktop binaries.
+
+            Windows may show a SmartScreen warning, and macOS may require manually allowing the app in Privacy & Security.

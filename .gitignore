@@ -1,0 +1,7 @@
+/target
+.DS_Store
+models/.DS_Store
+models/*.mnn
+**/.ocr-cache/
+直播.csv
+视频.csv
