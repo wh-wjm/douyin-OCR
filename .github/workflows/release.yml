@@ -20,12 +20,6 @@ jobs:
             binary: export_gui
             app_binary: 抖音登记OCR
             archive: whwjm-ocr-macos-arm64-unsigned.zip
-          - name: macos-x64
-            os: macos-13
-            target: x86_64-apple-darwin
-            binary: export_gui
-            app_binary: 抖音登记OCR
-            archive: whwjm-ocr-macos-x64-unsigned.zip
           - name: windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -82,6 +76,6 @@ jobs:
         with:
           files: artifacts/**/*.zip
           body: |
-            This release contains unsigned desktop binaries.
+            本版本包含未签名的桌面程序。
 
-            Windows may show a SmartScreen warning, and macOS may require manually allowing the app in Privacy & Security.
+            Windows 可能会显示 SmartScreen 提醒，macOS 可能需要在隐私与安全性中手动允许运行。
