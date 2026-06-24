@@ -4,8 +4,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 use whwjm_ocr::{
-    ExportControl, ExportEvent, ExportOptions, ExportSummary, ModelDownloadProgress, OcrModelTier,
-    export_csv_with_events,
+    ExportControl, ExportEvent, ExportOptions, ExportSummary, ModelDownloadProgress,
+    OcrEngineConfig, OcrModelTier, export_csv_with_events,
 };
 
 #[derive(Default)]
@@ -16,7 +16,11 @@ struct AppState {
 }
 
 #[derive(Serialize, Clone)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 enum UiExportEvent {
     ModelDownload {
         model_tier: String,
@@ -88,6 +92,7 @@ fn start_export(
         let options = ExportOptions::new(PathBuf::from(image_dir))
             .with_model_dir(model_dir)
             .with_model_tier(tier)
+            .with_ocr_engine_config(desktop_ocr_engine_config())
             .with_control(control);
 
         let result = export_csv_with_events(options, |event| {
@@ -191,6 +196,13 @@ fn parse_model_tier(value: &str) -> Result<OcrModelTier, String> {
     }
 }
 
+fn desktop_ocr_engine_config() -> OcrEngineConfig {
+    OcrEngineConfig::fast()
+        .with_threads(2)
+        .with_parallel(false)
+        .with_min_result_confidence(0.5)
+}
+
 fn map_export_event(event: ExportEvent) -> UiExportEvent {
     match event {
         ExportEvent::ModelDownload(progress) => map_model_download(progress),
@@ -275,4 +287,71 @@ fn fallback_model_dir() -> PathBuf {
     }
 
     PathBuf::from("models")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn serializes_export_event_fields_as_camel_case() {
+        let model_download = serde_json::to_value(UiExportEvent::ModelDownload {
+            model_tier: "medium".to_owned(),
+            file_name: "PP-OCRv6_medium_det.mnn".to_owned(),
+            downloaded_bytes: 1024,
+            total_bytes: Some(2048),
+            bytes_per_second: 512.0,
+            finished: false,
+        })
+        .expect("model download event should serialize");
+
+        assert_eq!(model_download["kind"], "modelDownload");
+        assert_eq!(model_download["modelTier"], "medium");
+        assert_eq!(model_download["fileName"], "PP-OCRv6_medium_det.mnn");
+        assert_eq!(model_download["downloadedBytes"], 1024);
+        assert_eq!(model_download["totalBytes"], 2048);
+        assert_eq!(model_download["bytesPerSecond"], 512.0);
+        assert_eq!(model_download.get("model_tier"), None);
+        assert_eq!(model_download.get("file_name"), None);
+
+        let image = serde_json::to_value(UiExportEvent::Image {
+            current: 1,
+            total: 2,
+            image_path: "/tmp/1.png".to_owned(),
+            file_name: "1.png".to_owned(),
+            cache_hit: true,
+        })
+        .expect("image event should serialize");
+
+        assert_eq!(
+            image,
+            json!({
+                "kind": "image",
+                "current": 1,
+                "total": 2,
+                "imagePath": "/tmp/1.png",
+                "fileName": "1.png",
+                "cacheHit": true
+            })
+        );
+
+        let complete = serde_json::to_value(UiExportEvent::Complete {
+            summary: UiExportSummary {
+                live_csv_path: "/tmp/直播.csv".to_owned(),
+                video_csv_path: "/tmp/视频.csv".to_owned(),
+                image_count: 3,
+                live_row_count: 2,
+                video_row_count: 1,
+            },
+        })
+        .expect("complete event should serialize");
+
+        assert_eq!(complete["summary"]["liveCsvPath"], "/tmp/直播.csv");
+        assert_eq!(complete["summary"]["videoCsvPath"], "/tmp/视频.csv");
+        assert_eq!(complete["summary"]["imageCount"], 3);
+        assert_eq!(complete["summary"]["liveRowCount"], 2);
+        assert_eq!(complete["summary"]["videoRowCount"], 1);
+        assert_eq!(complete["summary"].get("live_csv_path"), None);
+    }
 }

@@ -9,3 +9,4 @@ pub use ocr::{
     DEFAULT_CHARSET_PATH, DEFAULT_DET_MODEL_PATH, DEFAULT_MODEL_CDN_BASE_URL,
     DEFAULT_REC_MODEL_PATH, OcrClient, OcrClientConfig, OcrModelTier, OcrTextBlock,
 };
+pub use ocr_rs::OcrEngineConfig;

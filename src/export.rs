@@ -2,6 +2,7 @@ use crate::ocr::{
     DEFAULT_MODEL_CDN_BASE_URL, OcrClient, OcrClientConfig, OcrModelTier, OcrTextBlock,
 };
 use anyhow::{Context, Result};
+use ocr_rs::OcrEngineConfig;
 use std::cmp::Ordering;
 use std::fs;
 use std::io::Read;
@@ -55,6 +56,7 @@ pub struct ExportOptions {
     pub image_dir: PathBuf,
     pub model_dir: PathBuf,
     pub model_tier: OcrModelTier,
+    pub ocr_engine_config: Option<OcrEngineConfig>,
     pub model_cdn_base_url: String,
     pub download_missing_models: bool,
     pub control: Option<Arc<ExportControl>>,
@@ -66,6 +68,7 @@ impl ExportOptions {
             image_dir: image_dir.into(),
             model_dir: PathBuf::from("models"),
             model_tier: OcrModelTier::Medium,
+            ocr_engine_config: None,
             model_cdn_base_url: DEFAULT_MODEL_CDN_BASE_URL.to_owned(),
             download_missing_models: true,
             control: None,
@@ -79,6 +82,11 @@ impl ExportOptions {
 
     pub fn with_model_tier(mut self, model_tier: OcrModelTier) -> Self {
         self.model_tier = model_tier;
+        self
+    }
+
+    pub fn with_ocr_engine_config(mut self, engine_config: OcrEngineConfig) -> Self {
+        self.ocr_engine_config = Some(engine_config);
         self
     }
 
@@ -176,7 +184,10 @@ pub fn export_csv_with_events(
         control.reset();
     }
 
-    let ocr_config = OcrClientConfig::for_tier_in_dir(options.model_tier, &options.model_dir);
+    let mut ocr_config = OcrClientConfig::for_tier_in_dir(options.model_tier, &options.model_dir);
+    if let Some(engine_config) = options.ocr_engine_config.clone() {
+        ocr_config.engine_config = engine_config;
+    }
     if options.download_missing_models {
         ensure_models_available(
             &ocr_config,

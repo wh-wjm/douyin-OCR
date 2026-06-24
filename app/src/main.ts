@@ -85,11 +85,22 @@ if (!appRoot) {
 }
 
 const app = appRoot;
+let renderQueued = false;
 
 function render() {
+  renderQueued = false;
   app.innerHTML = state.showAbout ? renderAbout() : renderMain();
   bindMainEvents();
   bindAboutEvents();
+}
+
+function scheduleRender() {
+  if (renderQueued) {
+    return;
+  }
+
+  renderQueued = true;
+  requestAnimationFrame(render);
 }
 
 function renderMain() {
@@ -330,15 +341,16 @@ function handleExportEvent(event: ExportEvent) {
       break;
   }
 
-  render();
+  scheduleRender();
 }
 
 function handleModelDownload(event: Extract<ExportEvent, { kind: "modelDownload" }>) {
   state.statusText = `本地没有 ${event.modelTier} 模型，正在下载...`;
-  state.progress = event.totalBytes ? event.downloadedBytes / event.totalBytes : 0;
+  state.progress = event.totalBytes ? clampProgress(event.downloadedBytes / event.totalBytes) : 0;
   const total = event.totalBytes ? formatBytes(event.totalBytes) : "未知大小";
   const percent = event.totalBytes ? `${((event.downloadedBytes * 100) / event.totalBytes).toFixed(1)}%` : "--";
-  state.downloadText = `正在下载 ${event.fileName}：${formatBytes(event.downloadedBytes)} / ${total}，${percent}，${formatBytes(event.bytesPerSecond)}/s`;
+  const speed = event.bytesPerSecond > 0 ? `${formatBytes(event.bytesPerSecond)}/s` : "计算中";
+  state.downloadText = `正在下载 ${event.fileName}：${formatBytes(event.downloadedBytes)} / ${total}，${percent}，${speed}`;
 
   if (event.finished) {
     appendLog(`模型下载完成：${event.fileName}`);
@@ -350,10 +362,107 @@ function appendLog(line: string) {
 }
 
 function formatBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${Math.max(0, Math.round(bytes))} B`;
+}
+
+function clampProgress(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizeExportEvent(value: unknown): ExportEvent | null {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const kind = stringValue(record.kind, "");
+  switch (kind) {
+    case "modelDownload":
+      return {
+        kind,
+        modelTier: modelTierValue(read(record, "modelTier", "model_tier"), state.modelTier),
+        fileName: stringValue(read(record, "fileName", "file_name"), "模型文件"),
+        downloadedBytes: numberValue(read(record, "downloadedBytes", "downloaded_bytes"), 0),
+        totalBytes: nullableNumberValue(read(record, "totalBytes", "total_bytes")),
+        bytesPerSecond: numberValue(read(record, "bytesPerSecond", "bytes_per_second"), 0),
+        finished: booleanValue(record.finished, false),
+      };
+    case "image":
+      return {
+        kind,
+        current: numberValue(record.current, 0),
+        total: numberValue(record.total, 0),
+        imagePath: stringValue(read(record, "imagePath", "image_path"), ""),
+        fileName: stringValue(read(record, "fileName", "file_name"), "未知图片"),
+        cacheHit: booleanValue(read(record, "cacheHit", "cache_hit"), false),
+      };
+    case "complete": {
+      const summary = asRecord(record.summary);
+      if (!summary) {
+        return null;
+      }
+
+      return {
+        kind,
+        summary: {
+          liveCsvPath: stringValue(read(summary, "liveCsvPath", "live_csv_path"), ""),
+          videoCsvPath: stringValue(read(summary, "videoCsvPath", "video_csv_path"), ""),
+          imageCount: numberValue(read(summary, "imageCount", "image_count"), 0),
+          liveRowCount: numberValue(read(summary, "liveRowCount", "live_row_count"), 0),
+          videoRowCount: numberValue(read(summary, "videoRowCount", "video_row_count"), 0),
+        },
+      };
+    }
+    case "error":
+      return {
+        kind,
+        message: stringValue(record.message, "未知错误"),
+      };
+    case "state":
+      return {
+        kind,
+        running: booleanValue(record.running, false),
+        paused: booleanValue(record.paused, false),
+      };
+    default:
+      return null;
+  }
+}
+
+function read(record: Record<string, unknown>, camelKey: string, snakeKey: string) {
+  return record[camelKey] ?? record[snakeKey];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? value as Record<string, unknown> : null;
+}
+
+function stringValue(value: unknown, fallback: string) {
+  return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function numberValue(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function nullableNumberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function booleanValue(value: unknown, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function modelTierValue(value: unknown, fallback: ModelTier): ModelTier {
+  return value === "tiny" || value === "small" || value === "medium" ? value : fallback;
 }
 
 function formatError(error: unknown) {
@@ -373,8 +482,15 @@ function escapeAttribute(value: string) {
   return escapeHtml(value);
 }
 
-await listen<ExportEvent>("export-event", (event) => {
-  handleExportEvent(event.payload);
+await listen<unknown>("export-event", (event) => {
+  const normalized = normalizeExportEvent(event.payload);
+  if (normalized) {
+    handleExportEvent(normalized);
+    return;
+  }
+
+  appendLog("收到无法识别的导出事件");
+  scheduleRender();
 });
 
 render();
