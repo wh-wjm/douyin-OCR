@@ -52,6 +52,11 @@ type Project = {
   repo: string;
 };
 
+type RelatedLink = {
+  label: string;
+  url: string;
+};
+
 const projects: Project[] = [
   { name: "PaddleOCR", license: "Apache-2.0", repo: "https://github.com/PaddlePaddle/PaddleOCR" },
   { name: "ocr-rs", license: "Apache-2.0", repo: "https://github.com/zibo-chen/rust-paddle-ocr" },
@@ -64,6 +69,11 @@ const projects: Project[] = [
   { name: "anyhow", license: "MIT 或 Apache-2.0", repo: "https://github.com/dtolnay/anyhow" },
   { name: "ureq", license: "MIT 或 Apache-2.0", repo: "https://github.com/algesten/ureq" },
   { name: "Rust", license: "MIT 或 Apache-2.0", repo: "https://github.com/rust-lang/rust" },
+];
+
+const relatedLinks: RelatedLink[] = [
+  { label: "三氢 GitHub", url: "https://github.com/isTrih" },
+  { label: "芜湖玩家盟官网", url: "https://www.topgamers.com.cn/" },
 ];
 
 const state = {
@@ -169,10 +179,12 @@ function renderAbout() {
         <button class="ghost-button" data-action="back">返回</button>
       </header>
 
-      <button class="developer-panel" data-url="https://github.com/isTrih">
-        <strong>开发者：三氢</strong>
-        <span>https://github.com/isTrih</span>
-      </button>
+      <section class="developer-panel">
+        <strong>开发者：三氢@芜湖玩家盟</strong>
+        <div class="related-links">
+          ${relatedLinks.map(renderRelatedLink).join("")}
+        </div>
+      </section>
 
       <section class="project-list">
         <div class="list-heading">
@@ -192,6 +204,15 @@ function renderProject(project: Project) {
       <span>${escapeHtml(project.name)}</span>
       <span>${escapeHtml(project.license)}</span>
       <span>${escapeHtml(project.repo)}</span>
+    </button>
+  `;
+}
+
+function renderRelatedLink(link: RelatedLink) {
+  return `
+    <button class="link-button" data-url="${escapeAttribute(link.url)}">
+      <span>${escapeHtml(link.label)}</span>
+      <span>${escapeHtml(link.url)}</span>
     </button>
   `;
 }

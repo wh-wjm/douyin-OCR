@@ -248,7 +248,7 @@ slint::slint! {
             }
 
             Rectangle {
-                height: 72px;
+                height: 96px;
                 border-color: #d7dee8;
                 border-width: 1px;
                 border-radius: 6px;
@@ -258,8 +258,9 @@ slint::slint! {
                     padding: 12px;
                     spacing: 4px;
 
-                    Text { text: "开发者：三氢"; font-weight: 700; color: #172033; }
-                    Text { text: "https://github.com/isTrih"; color: #0a66c2; }
+                    Text { text: "开发者：三氢@芜湖玩家盟"; font-weight: 700; color: #172033; }
+                    Text { text: "三氢 GitHub：https://github.com/isTrih"; color: #0a66c2; }
+                    Text { text: "芜湖玩家盟官网：https://www.topgamers.com.cn/"; color: #0a66c2; }
                 }
 
                 TouchArea {

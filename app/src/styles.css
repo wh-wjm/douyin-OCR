@@ -200,18 +200,36 @@ select {
 .developer-panel {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   width: 100%;
-  min-height: 72px;
   padding: 14px;
   border: 1px solid #d8e0eb;
   border-radius: 8px;
   text-align: left;
   background: #ffffff;
-  cursor: pointer;
 }
 
-.developer-panel span {
+.related-links {
+  display: grid;
+  gap: 8px;
+}
+
+.link-button {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+}
+
+.link-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-button span:last-child {
   color: #0a66c2;
 }
 

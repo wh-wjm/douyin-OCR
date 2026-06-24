@@ -1024,7 +1024,7 @@ dependencies = [
 
 [[package]]
 name = "douyin-ocr-tauri"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -5528,7 +5528,7 @@ dependencies = [
 
 [[package]]
 name = "whwjm-ocr"
-version = "2.0.0"
+version = "2.0.2"
 dependencies = [
  "anyhow",
  "image",

@@ -45,12 +45,12 @@
 
 从发布页面下载对应系统的安装包。
 
-- macOS：下载 `douyin-ocr-macos-arm64-app-unsigned.zip`，解压后运行 `抖音登记OCR.app`。
+- macOS：下载 `douyin-ocr-macos-arm64-unsigned.dmg`，打开后将 `抖音登记OCR.app` 拖入应用程序目录。
 - Windows：下载 `douyin-ocr-windows-x64-setup-unsigned.exe`，双击安装。
 
 首次运行时，如果本机没有所选模型，程序会自动下载模型。下载完成后会继续处理图片。模型会存放在用户目录下的应用数据目录中，不会写入程序安装目录。
 
-程序目前发布的是未签名版本。Windows 可能会出现 SmartScreen 提醒，macOS 可能需要在系统设置的“隐私与安全性”中手动允许运行。
+程序目前发布的是未签名版本。Windows 可能会出现 SmartScreen 提醒。macOS 如遇“已损坏，无法打开”或“来自身份不明的开发者”，可先将 App 拖入应用程序目录，再运行 DMG 内的 Unix 可执行修复工具 `已损坏修复`。
 
 ## 使用命令行示例
 
@@ -126,9 +126,9 @@ https://assets.checkpoint321.com/wjm/models/
 
 ## 发布
 
-推送形如 `v2.0.0` 的标签会触发发布流程。当前自动构建以下未签名产物：
+推送形如 `v2.0.2` 的标签会触发发布流程。当前自动构建以下未签名产物：
 
-- macOS Apple 芯片版本，产物为包含 `抖音登记OCR.app` 的 zip。
+- macOS Apple 芯片版本，产物为包含 `抖音登记OCR.app`、`已损坏修复` 和应用程序快捷入口的 DMG。
 - Windows x64 版本，产物为 NSIS 安装器。
 
 后续不再构建 macOS x64 版本。
@@ -190,6 +190,8 @@ cargo run --features slint-gui --bin export_gui
 
 ## 开发者
 
-开发者：三氢
+开发者：三氢@芜湖玩家盟
 
-主页：https://github.com/isTrih
+三氢 GitHub：https://github.com/isTrih
+
+芜湖玩家盟官网：https://www.topgamers.com.cn/
